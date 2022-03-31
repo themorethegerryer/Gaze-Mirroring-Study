@@ -1,9 +1,19 @@
 import numpy as np
-import pyglet
+import pyglet #alternative pygame
+
+'''
+init_eyes()
+
+Open up pyglet window and initalize looking straight forward.
+
+return: None
+'''
+def init_eyes():
+    pass
 
 '''
 draw_eyes(theta,r)
-theta: [0,2*pi] angle the pupils in polar coordinates (0 is pupils right, looking left)
+theta: [0,2*pi] angle the pupils in polar coordinates (0 is pupils on the right of circle)
 r: [0,1] pupil distance from center (normalized where 0 is looking straight, 1 is at edge of eye)
 
 This function animates the robot's eyes based on the input polar cordinates of the pupils (using pyglet for animation).
@@ -15,12 +25,20 @@ def draw_eyes(theta,r):
     pass
 
 
-'''
-blink() [Optional, we may not need this, or it may be easier to include it in draw_eyes]
+# '''
+# blink() [Optional, we may not need this, or it may be easier to include it in draw_eyes]
 
-This function, when called, will blink the robot's eyes
+# This function, when called, will blink the robot's eyes
 
-return: None
-'''
-def blink():
-    pass
+# return: None
+# '''
+# def blink():
+#     pass
+
+if __name__ == "__main__":
+    init_eyes()
+    while(True):
+        theta = input("Enter theta: ")
+        r = input("Enter r: ")
+        draw_eyes(theta, r)
+    
