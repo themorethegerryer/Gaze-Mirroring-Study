@@ -33,7 +33,7 @@ def on_draw():
     sprite.draw()
     sprite2.draw()
 
-#sprite2.update(x = (253 + 1 * math.cos(0)), y = (395 + 1 * math.sin(0)))
+sprite2.update(x = (253 + 56* 1.0 * math.cos(math.pi)), y = (395 + 56 * 1.0 * math.sin(math.pi)))
 
 
 pyglet.app.run()
