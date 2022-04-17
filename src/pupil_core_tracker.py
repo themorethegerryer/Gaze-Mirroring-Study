@@ -15,6 +15,21 @@ import time
 #   frequency of blinks (/min)
 #   frequency of gaze aversion (/min)
 
+gaze_model = None
+robot = None
+eye_contact_lens = []
+gaze_aversion_lens = []
+gaze_aversion_thetas = []
+gaze_aversions = 0
+blinks = 0
+
+blink_thresh = 1 #seconds
+blink_time = 0.0
+eye_contact_time = 0.0
+averted_gaze_time = 0.0
+start_time = 0.0
+total_time = 0.0
+
 def warp2pi(angle_rad):
     """
     Warps an angle in [-pi, pi]. Used in the update step.
@@ -30,26 +45,31 @@ class GazeModel:
         self.filename = subject_name+"-"+str(trial)+".pkl"
         
         self.model = {
-            "eye_contact_length" : 0, # seconds
-            "gaze_aversion_length" : 0, # seconds
-            "gaze_aversion_theta" : 0, # theta [-\pi, \pi]
-            "gaze_aversion_freq" : 0, # times/min
-            "blink_freq" : 0 # times/min
+            "eye_contact_length" : 3.3, # seconds
+            "gaze_aversion_length" : 0.7, # seconds
+            "gaze_aversion_theta" : np.pi/3, # theta [-\pi, \pi]
+            "gaze_aversion_r" : 0.5, # normalize [0,1]
+            "gaze_aversion_freq" : 0.0, # times/min
+            "blink_freq" : 18.0 # times/min
             }
         
         # If subject model already exists, load it in. Otherwise, create fresh
         if os.path.exists(self.path2models+self.filename):
-            with open(self.path2models+self.filename,'wb') as fp:
+            with open(self.path2models+self.filename,'rb') as fp:
                 self.model = pickle.load(fp)
     
     def save_model(self):
         with open(self.path2models+self.filename,'wb') as fp:
             pickle.dump(self.model, fp)
             
-gaze_model = None
 
 def handler(signum, frame):
     if gaze_model is not None:
+        robot.kill()
+        print("Test terminated --- building model", flush=True)
+        total_time = time.perf_counter()-start_time
+        gaze_model.model['blink_freq'] = blinks/(total_time/60)
+        
         print("Test terminated --- saving model", flush=True)
         gaze_model.save_model()
     else:
@@ -82,30 +102,39 @@ if __name__ == "__main__":
     # Assumes `sub_port` to be set to the current subscription port
     subscriber = ctx.socket(zmq.SUB)
     subscriber.connect(f'tcp://{ip}:{sub_port}')
-    # subscriber.subscribe('gaze.')  # receive all gaze messages
+    subscriber.subscribe('gaze.')  # receive all gaze messages
     subscriber.subscribe('fixations')
     subscriber.subscribe('blinks')
     
+    # subject_name = input("Name of subject:\t")
+    # trial = input("Trial:\t")
+    # gaze_model = GazeModel(subject_name=subject_name, trial=trial)
+    gaze_model = GazeModel()
+    
+    start_time = time.perf_counter()
     while True:
         topic, payload = subscriber.recv_multipart()
         message = msgpack.loads(payload)
-        print(f"{topic}: {message}")
+        # print(f"{topic}: {message}")
         # print(str(topic))
         if str(topic) == "b\'fixations\'":
             print(message['norm_pos'])
-            x = message['norm_pos'][0]
-            y = message['norm_pos'][1]
+            x = (message['norm_pos'][0]*2)-1
+            y = (message['norm_pos'][1]*2)-1
             theta = np.arctan2(y,x)
             r = np.sqrt(np.square(x)+np.square(y))
-            print(theta,r)
-            robot.update(theta,r)
+            print("Fixation:",theta,r)
+            # robot.update(theta,r)
         elif str(topic) == "b\'gaze.3d.1.\'":
             print(message['norm_pos'])
-            x = message['norm_pos'][0]
-            y = message['norm_pos'][1]
-            theta = np.arctan2(y,x)
-            r = np.sqrt(np.square(x)+np.square(y))
-            print(theta,r)
-            robot.update(theta,r)
+            if np.linalg.norm(message['norm_pos']) < 10:
+                x = (message['norm_pos'][0]*2)-1
+                y = (message['norm_pos'][1]*2)-1
+                theta = np.arctan2(y,x)
+                r = np.sqrt(np.square(x)+np.square(y))
+                print("Gaze:", theta,r)
+                robot.update(theta,r)
         elif str(topic) == "b\'blinks\'":
-            pass
+            if time.perf_counter() - blink_time > blink_thresh:
+                blinks += 1
+                blink_time = time.perf_counter()
