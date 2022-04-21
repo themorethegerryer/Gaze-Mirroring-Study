@@ -8,7 +8,7 @@ models = []
 subjects = []
 for filename in os.listdir(path2models):
     if filename[-4:] == ".pkl":
-        subjects.append(filename)
+        subjects.append(filename[:-4])
         file = os.path.join(path2models,filename)
         with open(file,'rb') as fp:
             model = pickle.load(fp)
